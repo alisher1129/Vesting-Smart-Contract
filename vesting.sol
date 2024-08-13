@@ -21,17 +21,14 @@ contract Vesting {
     event EmployeeAdded(
         address indexed employeeAddress,
         uint256 startTime,
-         uint256 cliffDuration,
+        uint256 cliffDuration,
         uint256 totalDuration,
         uint256 totalTokens
     );
 
     event TokensReleased(address indexed employeeAddress, uint256 amount);
 
-    constructor(
-        IERC20 _token 
-    ) 
-    {
+    constructor(IERC20 _token) {
         token = _token;
         owner = msg.sender;
     }
@@ -51,18 +48,20 @@ contract Vesting {
     }
 
     //Function to add employees
-    function addEmployee(
-        address _employee,
-        uint256 _totalTokens,
-        uint256 _cliffDuration,
-        uint256 _totalDuration
-    ) public onlyOwner {
+    function addEmployee(address _employee, uint256 _totalTokens)
+        public
+        // uint256 _cliffDuration,
+        // uint256 _totalDuration
+        onlyOwner
+    {
         require(!employees[_employee].exists, "Employee already exists");
 
         uint256 currentTime = block.timestamp;
-        uint256 employeeCliffDuration = block.timestamp + _cliffDuration;
-        uint256 employeeTotalDuration = block.timestamp + _totalDuration;
-        
+        // uint256 employeeCliffDuration = block.timestamp + _cliffDuration;
+        // uint256 employeeTotalDuration = block.timestamp + _totalDuration;
+        uint256 employeeCliffDuration = block.timestamp + 3 minutes;
+        uint256 employeeTotalDuration = block.timestamp + 12 minutes;
+
         employees[_employee] = Employee({
             employeeAddress: _employee,
             startTime: currentTime,
@@ -73,23 +72,34 @@ contract Vesting {
             exists: true
         });
 
-        emit EmployeeAdded(_employee, currentTime, employeeCliffDuration  ,employeeTotalDuration ,_totalTokens);
+        emit EmployeeAdded(
+            _employee,
+            currentTime,
+            employeeCliffDuration,
+            employeeTotalDuration,
+            _totalTokens
+        );
     }
 
     //Function to withDraw Tokens
     function withDraw(address _employee) public nonReentrant {
-        require(employees[_employee].exists, "Employee does not exist");
-        require(employees[_employee].totalTokens !=employees[_employee].receivedTokens, "You have already claimed tokens.");
-        require(block.timestamp > employees[_employee].totalDuration,"You should wait");
+        Employee storage employee = employees[_employee];
+
+        require(employee.exists, "Employee does not exist");
+        require(
+            employee.totalTokens != employee.receivedTokens,
+            "You have already claimed tokens."
+        );
+        require(block.timestamp >= employee.totalDuration, "You should wait");
 
         uint256 vestedTokens = calculateVestedTokens(_employee);
-    
-        employees[_employee].receivedTokens += vestedTokens;
-        token.transferFrom(owner,_employee,employees[_employee].totalTokens);
+
+        employee.receivedTokens += vestedTokens;
+        token.transferFrom(owner, _employee, employee.totalTokens);
 
         emit TokensReleased(_employee, vestedTokens);
     }
- 
+
     //Function to calculate Tokens for employees
     function calculateVestedTokens(address _employee)
         public
@@ -100,25 +110,35 @@ contract Vesting {
 
         if (block.timestamp > employee.cliffDuration) {
             if (block.timestamp >= employee.totalDuration) {
-                return employee.totalTokens;
-            } else {
-                uint256 timeElapsed = block.timestamp - employee.startTime;
-                uint256 vestingDuration = employee.totalDuration -  employee.cliffDuration;
-
-                // Calculate the vested tokens based on the elapsed time
-                uint256 vestedTokens = (timeElapsed * employee.totalTokens) /
-                    vestingDuration;
-
-                // Ensure the vested tokens do not exceed the total tokens allocated to the employee
-                if (vestedTokens > employee.totalTokens) {
-                    vestedTokens = employee.totalTokens;
+                if (employee.totalTokens == employee.receivedTokens) {
+                    return 0;
+                } else {
+                    return employee.totalTokens;
                 }
-                return vestedTokens;
+            } else {
+                if (employee.totalTokens == employee.receivedTokens) {
+                    return 0;
+                } else {
+                    uint256 timeElapsedSinceCliff = block.timestamp - employee.cliffDuration;
+                    uint256 vestingDuration = employee.totalDuration - employee.cliffDuration;
+
+                    // Calculate the number of periods that have passed (e.g., minutes or months)
+                    uint256 periodDuration = vestingDuration / 10; // Each period corresponds to 10% of total tokens
+                    uint256 periodsPassed = timeElapsedSinceCliff / periodDuration;
+
+                    // Calculate the vested tokens based on the periods passed
+                    uint256 vestedTokens = (periodsPassed * employee.totalTokens) / 10;
+
+                    // Ensure the vested tokens do not exceed the total tokens allocated to the employee
+                    if (vestedTokens > employee.totalTokens) {
+                        vestedTokens = employee.totalTokens;
+                    }
+                    return vestedTokens;
+                }
             }
         } else {
             return 0;
         }
-     
     }
 
     function getTime() external view returns (uint256) {
@@ -129,4 +149,12 @@ contract Vesting {
         return token.balanceOf(_account);
     }
 
+    function employeeCheck(address _employee)
+        public
+        view
+        returns (bool _value)
+    {
+        require(employees[_employee].exists, "Employee does not exist");
+        return true;
+    }
 }
