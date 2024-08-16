@@ -2,12 +2,14 @@
 pragma solidity >=0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract Vesting {
+contract VestingContract {
     IERC20 public token; //ERC20
     address public owner;
 
     struct Employee {
         address employeeAddress;
+        string employeeName;
+        string employeeEmail;
         uint256 startTime;
         uint256 cliffDuration;
         uint256 totalDuration;
@@ -20,6 +22,8 @@ contract Vesting {
 
     event EmployeeAdded(
         address indexed employeeAddress,
+        string employeeName,
+        string employeeEmail,
         uint256 startTime,
         uint256 cliffDuration,
         uint256 totalDuration,
@@ -48,7 +52,12 @@ contract Vesting {
     }
 
     //Function to add employees
-    function addEmployee(address _employee, uint256 _totalTokens)
+    function addEmployee(
+        address _employee,
+        uint256 _totalTokens,
+        string memory _employeeName,
+        string memory _employeeEmail
+    )
         public
         // uint256 _cliffDuration,
         // uint256 _totalDuration
@@ -64,6 +73,8 @@ contract Vesting {
 
         employees[_employee] = Employee({
             employeeAddress: _employee,
+            employeeName: _employeeName,
+            employeeEmail: _employeeEmail,
             startTime: currentTime,
             cliffDuration: employeeCliffDuration,
             totalDuration: employeeTotalDuration,
@@ -74,6 +85,8 @@ contract Vesting {
 
         emit EmployeeAdded(
             _employee,
+            _employeeName,
+            _employeeEmail,
             currentTime,
             employeeCliffDuration,
             employeeTotalDuration,
@@ -119,15 +132,19 @@ contract Vesting {
                 if (employee.totalTokens == employee.receivedTokens) {
                     return 0;
                 } else {
-                    uint256 timeElapsedSinceCliff = block.timestamp - employee.cliffDuration;
-                    uint256 vestingDuration = employee.totalDuration - employee.cliffDuration;
+                    uint256 timeElapsedSinceCliff = block.timestamp -
+                        employee.cliffDuration;
+                    uint256 vestingDuration = employee.totalDuration -
+                        employee.cliffDuration;
 
                     // Calculate the number of periods that have passed (e.g., minutes or months)
                     uint256 periodDuration = vestingDuration / 10; // Each period corresponds to 10% of total tokens
-                    uint256 periodsPassed = timeElapsedSinceCliff / periodDuration;
+                    uint256 periodsPassed = timeElapsedSinceCliff /
+                        periodDuration;
 
                     // Calculate the vested tokens based on the periods passed
-                    uint256 vestedTokens = (periodsPassed * employee.totalTokens) / 10;
+                    uint256 vestedTokens = (periodsPassed *
+                        employee.totalTokens) / 10;
 
                     // Ensure the vested tokens do not exceed the total tokens allocated to the employee
                     if (vestedTokens > employee.totalTokens) {
