@@ -94,6 +94,20 @@ contract VestingContract {
         );
     }
 
+    //Function to remove employees from mapping
+    function removeEmployee(address _employee) public onlyOwner {
+        require(employees[_employee].exists, "Employee does not exist");
+
+        // You may also want to transfer any unvested tokens back to the owner or handle them accordingly
+        uint256 remainingTokens = employees[_employee].totalTokens -
+            employees[_employee].receivedTokens;
+        if (remainingTokens > 0) {
+            token.transfer(owner, remainingTokens);
+        }
+
+        delete employees[_employee]; // Remove the employee from the mapping
+    }
+
     //Function to withDraw Tokens
     function withDraw(address _employee) public nonReentrant {
         Employee storage employee = employees[_employee];
@@ -153,6 +167,25 @@ contract VestingContract {
                     return vestedTokens;
                 }
             }
+        } else {
+            return 0;
+        }
+    }
+
+    //Function to check available tokens
+    function availableTokens(address _employee) public view returns (uint256) {
+        Employee storage employee = employees[_employee];
+
+        require(employee.exists, "Employee does not exist");
+
+        // Check if the employee has already claimed all their tokens
+        if (employee.totalTokens == employee.receivedTokens) {
+            return 0;
+        }
+
+        // Check if the vesting period has been completed
+        if (block.timestamp >= employee.totalDuration) {
+            return employee.totalTokens;
         } else {
             return 0;
         }
