@@ -32,6 +32,11 @@ contract VestingContract {
 
     event TokensReleased(address indexed employeeAddress, uint256 amount);
 
+    // event EmployeeRemoved(
+    //     address  employeeAddress
+
+    // );
+
     constructor(IERC20 _token) {
         token = _token;
         owner = msg.sender;
@@ -68,8 +73,8 @@ contract VestingContract {
         uint256 currentTime = block.timestamp;
         // uint256 employeeCliffDuration = block.timestamp + _cliffDuration;
         // uint256 employeeTotalDuration = block.timestamp + _totalDuration;
-        uint256 employeeCliffDuration = block.timestamp + 3 minutes;
-        uint256 employeeTotalDuration = block.timestamp + 12 minutes;
+        uint256 employeeCliffDuration = block.timestamp + 2 minutes;
+        uint256 employeeTotalDuration = block.timestamp + 6 minutes;
 
         employees[_employee] = Employee({
             employeeAddress: _employee,
@@ -99,13 +104,15 @@ contract VestingContract {
         require(employees[_employee].exists, "Employee does not exist");
 
         // You may also want to transfer any unvested tokens back to the owner or handle them accordingly
-        uint256 remainingTokens = employees[_employee].totalTokens -
-            employees[_employee].receivedTokens;
-        if (remainingTokens > 0) {
-            token.transfer(owner, remainingTokens);
-        }
+        // uint256 remainingTokens = employees[_employee].totalTokens -
+        //     employees[_employee].receivedTokens;
+        // if (remainingTokens > 0) {
+        //     token.transfer(owner, remainingTokens);
+        // }
 
         delete employees[_employee]; // Remove the employee from the mapping
+
+        // emit EmployeeRemoved(_employee);
     }
 
     //Function to withDraw Tokens
@@ -122,7 +129,7 @@ contract VestingContract {
         uint256 vestedTokens = calculateVestedTokens(_employee);
 
         employee.receivedTokens += vestedTokens;
-        token.transferFrom(owner, _employee, employee.totalTokens);
+        token.transfer(_employee, employee.totalTokens);
 
         emit TokensReleased(_employee, vestedTokens);
     }
@@ -134,6 +141,7 @@ contract VestingContract {
         returns (uint256)
     {
         Employee storage employee = employees[_employee];
+        require(employee.exists, "Employee does not exist");
 
         if (block.timestamp > employee.cliffDuration) {
             if (block.timestamp >= employee.totalDuration) {
@@ -204,7 +212,11 @@ contract VestingContract {
         view
         returns (bool _value)
     {
-        require(employees[_employee].exists, "Employee does not exist");
-        return true;
+        Employee storage employee = employees[_employee];
+        if (employee.exists) {
+            return true;
+        } else {
+            return false;
+        }
     }
 }
