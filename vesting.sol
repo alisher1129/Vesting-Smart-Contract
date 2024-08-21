@@ -73,8 +73,8 @@ contract VestingContract {
         uint256 currentTime = block.timestamp;
         // uint256 employeeCliffDuration = block.timestamp + _cliffDuration;
         // uint256 employeeTotalDuration = block.timestamp + _totalDuration;
-        uint256 employeeCliffDuration = block.timestamp + 2 minutes;
-        uint256 employeeTotalDuration = block.timestamp + 6 minutes;
+        uint256 employeeCliffDuration = block.timestamp + 1 minutes;
+        uint256 employeeTotalDuration = block.timestamp + 4 minutes;
 
         employees[_employee] = Employee({
             employeeAddress: _employee,
